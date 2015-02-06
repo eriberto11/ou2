@@ -209,6 +209,15 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
         }
     }
 }
+/*
+    Här får vi en pekare till en öppnad fil, vi går igenom karaktär för karaktär
+    och stegar igenom listan för att återfinna karaktären. Sedan lägger vi till
+    karaktärens bitvärde som skapades i treeToList, och lägger till det till
+    det till 'bitset ut' som kommer att skrivas till utfilen.
+    Avslutar med att leta upp EOT-tecknet, '\4', och passar på att avallokera
+    alla bitsets från listan *l.
+    Sist skrivs bitset ut till filen med fprintf.
+*/
 
 void listtozip(dlist *l, char *utfil, FILE *infil) {
    char temp;
@@ -254,13 +263,19 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
         }
    }
    char *bytearr = toByteArray(ut);
-   printf(" komplett längd %d bitset, x = %d\n",bitset_size(ut) , x);
+  // printf(" komplett längd %d bitset, x = %d\n",bitset_size(ut) , x);
     fprintf(utfilen, "%s" , bytearr);
     fclose(utfilen);
     free(bytearr);
     bitset_free(ut);
 }
 
+/*
+    Här stegar vi igenom bitset b som innehåller en hel komprimerad fil,
+    och för varje steg tar vi motsvarande steg i trien. När vi nått ett löv
+    så läser vi värdet och skriver till fil. Sedan går vi tillbaka till roten
+    och fortsätter.
+*/
 void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
     FILE *fp = fopen(utfil, "w");
     int x=0;
@@ -275,7 +290,7 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
                 }
             else {
                 fputc(c,fp);
-                printf("  HITTADE CHAR I huffträd %d\n", c);
+                printf("  HITTADE CHAR I huffträd %c\n", c);
                 p=huffTree_root(h);
             }
         }
@@ -294,23 +309,6 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
     }
 }
 
-bitset* bitsetFromFile(char *filename){
-    FILE *fp= fopen(filename,"r");
-    fseek(fp, 0L, SEEK_END);
-    int sz = ftell(fp);
-    printf("Storlek på filen = %d byte\n", sz);
-    fclose(fp);
-    FILE *fpp = fopen(filename, "r");
-    bitset *b;
-    b=malloc(sizeof(bitset));
-    b->length=sz*8;
-    b->capacity=0;
-    b->array=malloc(sz*sizeof(char));
-    fgets(b->array,sz,fpp);
-    printf("%s",b->array);
-    return b;
-}
-
 int main (int argc, char *argv[]){
     int ziporunzip=0;
     if(argc!= 5){
@@ -318,7 +316,6 @@ int main (int argc, char *argv[]){
         exit(0);
     }
     if(strncmp(argv[1],"-encode",7)==0){
-        printf("encode");
         ziporunzip=0;
     }
     else if(strncmp(argv[1],"-decode",7)==0){
@@ -351,8 +348,8 @@ int main (int argc, char *argv[]){
     else {
        bitset *b=bitsetFromFile(argv[3]);
        unzipFromFile(b,huff,argv[4]);
-     //   bitset *b=bitsetFromFile("ut.txt");
-      //  unzipFromFile(b,huff, "ut2.txt");
+    //   bitset *b=bitsetFromFile("ut.txt");
+    //  unzipFromFile(b,huff, "ut2.txt");
         bitset_free(b);
     }
     fclose(fp);
