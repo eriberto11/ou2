@@ -40,4 +40,6 @@ int bitset_size(bitset *b);
 //Deallocate all memory used by a bitset
 void bitset_free(bitset *b);
 
+//Creates a bitset from the file specified by the filename.
+bitset* bitsetFromFile(char *filename);
 #endif /* defined(__Huffman__BitSet__) */

@@ -78,3 +78,21 @@ int bitset_size(bitset *b) {
     return b->length;
 }
 
+
+bitset* bitsetFromFile(char *filename){
+    FILE *fp= fopen(filename,"r");
+    fseek(fp, 0L, SEEK_END);
+    int sz = ftell(fp);
+    printf("Storlek på filen = %d byte\n", sz);
+    fclose(fp);
+    FILE *fpp = fopen(filename, "r");
+    bitset *b;
+    b=malloc(sizeof(bitset));
+    b->length=sz*8;
+    b->capacity=0;
+    b->array=malloc(sz*sizeof(char));
+    fgets(b->array,sz,fpp);
+    return b;
+}
+
+
