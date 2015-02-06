@@ -5,6 +5,7 @@
 #include "dlist.h"
 #include "bitset.h"
 #include <string.h>
+#include <unistd.h>
 #define ARR_SIZE 256
 
 
@@ -182,7 +183,7 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
         listElement *le = malloc(1*sizeof(listElement));
         le->character= qq;
         le->bit = b;
-        printf(" = %c och bytearray = %d\n", le->character, b->array);
+     //   printf(" = %c och bytearray = %d\n", le->character, b->array);
         //stoppa in pekare till bokstaven och pekare till bitset.
         dlist_insert(l,dlist_first(l),le);
         // ta bort barnlösa föräldrar som ledde till noden. Stanna vid root, tas den bort tappar åkallande funktion bort sig.
@@ -196,13 +197,13 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
     else{
         //vi håller vänster genom trädet, så vänsterbarn hittas först.
         if(huffTree_hasLeftChild(h,p)) {
-            printf("0");
+     //       printf("0");
             p = huffTree_leftChild(h,p);
             bitset_setBitValue(b,bitset_size(b),false);
             treeToList(h,p,b,l);
         }
         else{
-            printf("1");
+     //       printf("1");
             p = huffTree_rightChild(h,p);
             bitset_setBitValue(b,bitset_size(b),true);
             treeToList(h,p,b,l);
@@ -233,7 +234,7 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
             p=dlist_next(l,p);
             if(e->character==temp){
                 int lengd = bitset_size(e->bit);
-                printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
+    //            printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
                 for(int i=0;i<lengd;i++){
                     bitset_setBitValue(ut,x,bitset_memberOf(e->bit,i));
                     x++;
@@ -249,7 +250,7 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
         p=dlist_next(l,p);
         if(e->character=='\4'){
             int lengd = bitset_size(e->bit);
-            printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
+    //        printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
             for(int i=0;i<lengd;i++){
                 bitset_setBitValue(ut,x,bitset_memberOf(e->bit,i));
                 x++;
@@ -264,7 +265,9 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
    }
    char *bytearr = toByteArray(ut);
   // printf(" komplett längd %d bitset, x = %d\n",bitset_size(ut) , x);
-    fprintf(utfilen, "%s" , bytearr);
+    fwrite(bytearr,sizeof(char),ut->capacity/8,utfilen);
+    //fprintf(utfilen, "%s" , bytearr);
+    printf("%d bytes used in encoded form.\n",bitset_size(ut)/8+1);
     fclose(utfilen);
     free(bytearr);
     bitset_free(ut);
@@ -284,13 +287,13 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
     while(x<b->length) {
         if(huffTree_hasCharacter(h,p)){
             c=huffTree_inspectCharacter(h,p);
-            if(c==13) {
+            if(c=='\4') {
                 x=b->length;
-                printf(" =  E O T ! \n");
+               printf("File decoded succesfully.\n");
                 }
             else {
                 fputc(c,fp);
-                printf("  HITTADE CHAR I huffträd %c\n", c);
+     //           printf("  HITTADE CHAR I huffträd %c\n", c);
                 p=huffTree_root(h);
             }
         }
@@ -299,11 +302,11 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
             x++;
             if(boul) {
                 p=huffTree_rightChild(h,p);
-                printf("1");
+    //            printf("1");
             }
             else {
                 p=huffTree_leftChild(h,p);
-                printf("0");
+    //            printf("0");
             }
         }
     }
@@ -322,15 +325,29 @@ int main (int argc, char *argv[]){
         ziporunzip=1;
     }
     else{
-        printf("incorrect argument, please encode or decode!");
+        printf("USAGE:\nhuffman [OPTION] [FILE0] [FILE1] [FILE2]\n Options:\n-encode encodes FILE1 according to frequence analysis done on FILE0."        " Stores the result in FILE2\n-decode decodes FILE1 according to frequence analysis done on FILE0. Stores the result in FILE2\n");
         exit(0);
     }
-    FILE *fp = fopen(argv[2],"r");
+    if(access(argv[2], F_OK) ==-1){
+        printf("no access to FILE0");
+        exit(0);
+    }
     HuffIntArrayTable *h = calloc(1,sizeof(HuffIntArrayTable));
+    FILE *fp=fopen(argv[2],"r");
     readTextToArray(h,fp);
+    fclose(fp);
     treesortHuffArr(h,h->arrNumber);
     huff_tree *huff = huffEncode(h);
+    if(access(argv[3], F_OK) ==-1){
+        printf("no access to FILE1");
+        exit(0);
+    }
     if(ziporunzip==0) {
+        FILE *fp0 = fopen(argv[3],"r");
+        fseek(fp0, 0L, SEEK_END);
+        int fp0size = ftell(fp0);
+        fclose(fp0);
+        printf("%d bytes read from %s.\n", fp0size,argv[3]);
         huffTree_pos pos= huffTree_root(huff);
         dlist *l = dlist_empty();
         dlist_setMemHandler(l,free);
@@ -338,21 +355,16 @@ int main (int argc, char *argv[]){
             bitset *b = bitset_empty();
             treeToList(huff,pos,b,l);
         }
-        FILE *f2 = fopen(argv[3],"r");
-        listtozip(l,argv[4], f2);
-      //  FILE *f2 = fopen("test.txt","r");
-   //1     listtozip(l,"ut.txt", f2);
-        fclose(f2);
+        FILE *fp1= fopen(argv[3], "r");
+        listtozip(l,argv[4], fp1);
+        fclose(fp1);
         dlist_free(l);
     }
     else {
        bitset *b=bitsetFromFile(argv[3]);
        unzipFromFile(b,huff,argv[4]);
-    //   bitset *b=bitsetFromFile("ut.txt");
-    //  unzipFromFile(b,huff, "ut2.txt");
         bitset_free(b);
     }
-    fclose(fp);
     free(huff->root);
     free(huff);
     free(h);
