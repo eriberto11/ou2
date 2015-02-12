@@ -179,11 +179,10 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
     if(huffTree_hasCharacter(h,p)){
         // skapa en bytearray av vägen vandrad genom hufftree
         //bokstaven från hufftree
-        char qq = huffTree_inspectCharacter(h,p);
+        int qq = huffTree_inspectCharacter(h,p);
         listElement *le = malloc(1*sizeof(listElement));
         le->character= qq;
         le->bit = b;
-     //   printf(" = %c och bytearray = %d\n", le->character, b->array);
         //stoppa in pekare till bokstaven och pekare till bitset.
         dlist_insert(l,dlist_first(l),le);
         // ta bort barnlösa föräldrar som ledde till noden. Stanna vid root, tas den bort tappar åkallande funktion bort sig.
@@ -197,13 +196,11 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
     else{
         //vi håller vänster genom trädet, så vänsterbarn hittas först.
         if(huffTree_hasLeftChild(h,p)) {
-     //       printf("0");
             p = huffTree_leftChild(h,p);
             bitset_setBitValue(b,bitset_size(b),false);
             treeToList(h,p,b,l);
         }
         else{
-     //       printf("1");
             p = huffTree_rightChild(h,p);
             bitset_setBitValue(b,bitset_size(b),true);
             treeToList(h,p,b,l);
@@ -221,7 +218,7 @@ void treeToList(huff_tree *h, huffTree_pos p,bitset *b,dlist *l){
 */
 
 void listtozip(dlist *l, char *utfil, FILE *infil) {
-   char temp;
+    int temp;
    bitset *ut= bitset_empty();
    unsigned long x=0;
    FILE *utfilen = fopen(utfil, "w");
@@ -234,7 +231,6 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
             p=dlist_next(l,p);
             if(e->character==temp){
                 int lengd = bitset_size(e->bit);
-    //            printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
                 for(int i=0;i<lengd;i++){
                     bitset_setBitValue(ut,x,bitset_memberOf(e->bit,i));
                     x++;
@@ -250,7 +246,6 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
         p=dlist_next(l,p);
         if(e->character=='\4'){
             int lengd = bitset_size(e->bit);
-    //        printf("matchad karaktär '%c' ::: bitlängd %d\n", e->character,lengd);
             for(int i=0;i<lengd;i++){
                 bitset_setBitValue(ut,x,bitset_memberOf(e->bit,i));
                 x++;
@@ -264,10 +259,8 @@ void listtozip(dlist *l, char *utfil, FILE *infil) {
         }
    }
    char *bytearr = toByteArray(ut);
-  // printf(" komplett längd %d bitset, x = %d\n",bitset_size(ut) , x);
     fwrite(bytearr,sizeof(char),ut->capacity/8,utfilen);
-    //fprintf(utfilen, "%s" , bytearr);
-    printf("%d bytes used in encoded form.\n",bitset_size(ut)/8+1);
+    printf("%d bytes used in encoded form.\n",ut->capacity/8);
     fclose(utfilen);
     free(bytearr);
     bitset_free(ut);
@@ -293,7 +286,6 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
                 }
             else {
                 fputc(c,fp);
-     //           printf("  HITTADE CHAR I huffträd %c\n", c);
                 p=huffTree_root(h);
             }
         }
@@ -302,20 +294,22 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
             x++;
             if(boul) {
                 p=huffTree_rightChild(h,p);
-    //            printf("1");
             }
             else {
                 p=huffTree_leftChild(h,p);
-    //            printf("0");
             }
         }
     }
 }
 
+void printUsage(){
+    printf("USAGE:\nhuffman [OPTION] [FILE0] [FILE1] [FILE2]\n Options:\n-encode encodes FILE1 according to frequence analysis done on FILE0."      " Stores the result in FILE2\n-decode decodes FILE1 according to frequence analysis done on FILE0. Stores the result in FILE2\n");
+}
+
 int main (int argc, char *argv[]){
     int ziporunzip=0;
     if(argc!= 5){
-        printf("USAGE:\nhuffman [OPTION] [FILE0] [FILE1] [FILE2]\n Options:\n-encode encodes FILE1 according to frequence analysis done on FILE0."        " Stores the result in FILE2\n-decode decodes FILE1 according to frequence analysis done on FILE0. Stores the result in FILE2\n");
+        printUsage();
         exit(0);
     }
     if(strncmp(argv[1],"-encode",7)==0){
@@ -325,11 +319,11 @@ int main (int argc, char *argv[]){
         ziporunzip=1;
     }
     else{
-        printf("USAGE:\nhuffman [OPTION] [FILE0] [FILE1] [FILE2]\n Options:\n-encode encodes FILE1 according to frequence analysis done on FILE0."        " Stores the result in FILE2\n-decode decodes FILE1 according to frequence analysis done on FILE0. Stores the result in FILE2\n");
+        printUsage();
         exit(0);
     }
     if(access(argv[2], F_OK) ==-1){
-        printf("no access to FILE0");
+        printf("no access to %s",argv[2]);
         exit(0);
     }
     HuffIntArrayTable *h = calloc(1,sizeof(HuffIntArrayTable));
@@ -339,7 +333,7 @@ int main (int argc, char *argv[]){
     treesortHuffArr(h,h->arrNumber);
     huff_tree *huff = huffEncode(h);
     if(access(argv[3], F_OK) ==-1){
-        printf("no access to FILE1");
+        printf("no access to %s",argv[3]);
         exit(0);
     }
     if(ziporunzip==0) {
