@@ -1,0 +1,56 @@
+Rapport ou2 2015-02-19
+
+Huffmankodning 
+Av Jon & Stefan
+
+Inledning:
+
+      Huffmanträdet och kodningen till bitar var det centrala i uppgiften, och där vi lagt fokus. Lite kringarbete med main-funktionens upplägg och filhantering har vi gjort, de valen gjordes för enkelhet och funktionalitet. 
+      Uppdelningen har varit att jon jobbat med bitset och Stefan skapat huffmanträdet.
+	
+Definition:
+
+	Dlist används som tabell, eftersom den får en nyckel och ett värde. Vi refererar till den som en tabell i rapporten.
+
+Arbetet:
+
+      Hela programmet följer ett antal steg:
+	1. Kolla att programmet startats med korrekta växlar och filer.
+	2. Oavsett encode eller decode:
+	2.1 Gör array av alla tecken i UTF-8
+	2.2 Gör frekvensanalys på frekvensfilen 
+	2.3 Använd Frekvensanalysen för att bygga upp ett huffmanträd
+	3. om encode:
+	3.1 Gör en tabell av Huffmanträdet med bitsets som representerar tecknets placering i huffmanträdet
+	3.2 Gå igenom infilen tecken för tecken och leta upp dem i tabellen, lägg till dess bitsets i en bitarray som ska skrivas till fil.
+	3.3 Skriv ut storleken på den slutliga  bitarrayen och infilen.
+	4. om decode : 
+	4.1. Läs in infilen till ett bitset.
+	4.2. Traversera huffmanträdet med bitset enligt den förbestämda logiken.
+	4.3 Skriv resultatet till en fil. 
+
+Kodning av bitsets:
+
+Bitset var en nästan komplett lösning på kodningsproblemet ifrån huffman-trädet. Det som saknas är ett sätt att plocka ut bitarna från en kodad fil. En mindre irritation är att när man vill skriva icke-initierade värden till en fil så ges det en varning i valgrind. 
+
+För att plocka ut bitarna ifrån den kodade filen använder vi skrivit funktionen bitsetFromFile. Den läser in storleken på filen, skapar en bitset*, allokerar minne för storleken på den kodade filen, och överför den kodade filen till bitset* med fread. Sedan skickar vi tillbaka till pekaren, och har nu gjort kodade filen till en bitset vi kan läsa med funktionerna som finns i bitset.c . 
+
+Sättet vi valde för att koda infilen är att skapa en ny bitset, som vi skriver varje karaktärs bitset till. När texten är läst så letar vi upp EOT-tecknet '\4' och skriver in det. Har vi sedan bitar över på den sista byten så fyller vi ut med 1:or, för att släcka felmeddelandet i valgrind. 
+
+Storleksproblem + spekulation:
+
+Det kommer att finnas några begränsningar på vad som kan behandlas. Vi väljer att inte programmera för detta eftersom vårt mål är att koda ett par sidor text och sedan kunna avkoda det, och begränsningarna ger oss väldigt goda marginaler. Allt under en gigabyte i storleksbegränsning borde vara görbart.
+
+-decode
+i funktionen bitsetFromFile i användningen av fread  är Storleksbegränsningen åtminstonde unsigned int * byte, så några gigabyte. Detta kan kringås genom att läsa in bitsets en megabyte i taget.
+
+-encode
+ när bitset skapas från infilen så används realloc, vilket lägger till en byte när det behövs för att skriva in en extra byte. Denna allokering görs 1024 ggr per kilobyte som skrivs, och kommer att flytta bitset-arrayen när nästa byte inte är ledigt minne. För stora filer är detta onödigt krävande. Det vore enkelt att allokera en megabyte i taget istället.
+
+-encode
+När bytearray skrivs till fil så används fwrite, som också är begränsad på unsigned int * byte. 
+
+-encode
+Att gå igenom hela tabellen för varje tecken är onödigt vid större avkodningsprojekt, eftersom det finns ett begränsat antal tecken, så kan vi använda en array av pekare till bitsets för att avkoda, för varje tecken som läses in får vi en position i arrayen, som vi sedan tar bitset från och stoppar in i bitset som ska skrivas ut. 
+
+Sedan finns begränsningen när fel frekvensanalysfil skickas med en fil som ska avkodas. Eftersom vi är "lövkompletta", alltså vi kommer alltid att hamna i ett löv oavsett vilken väg vi tar, så kommer vi alltid att få ut en radda tecken i den avkodade filen. Det enda sättet att upptäcka en felaktig frekvensfil är om vi aldrig kommer till stopptecknet. Eller om vi kommer till stopptecknet innan bitset är inne på sista byten. 
