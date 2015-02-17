@@ -4,6 +4,7 @@
 #include "hufftree.h"
 #include "dlist.h"
 #include "bitset.h"
+
 #include <string.h>
 #include <unistd.h>
 #define ARR_SIZE 256
@@ -300,17 +301,25 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
     int x=0;
     int c;
     huffTree_pos p=huffTree_root(h);
+    int correctLength=0;
     while(x<b->length) {
         if(!huffTree_hasLeftChild(h,p) && !huffTree_hasRightChild(h,p)) {
             c=(int)(intptr_t)huffTree_inspectCharacter(h,p);
             if(c==(int)'\4') {
-                x=b->length;
+                if(x+7< b->length){
+                    //printf("incorrect frequency analysis file!\n");
+                    //exit(0);
+                }
+
                printf("File decoded succesfully.\n");
+               correctLength=1;
+                x=b->length;
                 }
             else {
                 fputc(c,fp);
                 p=huffTree_root(h);
             }
+
         }
         else {
             bool boul = bitset_memberOf(b,x);
@@ -323,9 +332,13 @@ void unzipFromFile(bitset *b, huff_tree *h, char *utfil) {
             }
         }
     }
+
+        if(correctLength!=1) {
+            printf("incorrect frequency analysis file!\n");
+            exit(0);
     fclose(fp);
 }
-
+}
 void printUsage() {
     printf("USAGE:\nhuffman [OPTION] [FILE0] [FILE1] [FILE2]\n Options:\n"
            "-encode encodes FILE1 according to frequence analysis done on FILE0."
@@ -386,7 +399,6 @@ void ltozip(void *l[], char *utfil, FILE *infil) {
                 bitset_setBitValue(ut,n,true);
 
             }
-    printf("x = %d\n", x);
 
     char *bytearr = toByteArray(ut);
     fwrite(bytearr,sizeof(char),bitset_size(ut)/8,utfilen);
